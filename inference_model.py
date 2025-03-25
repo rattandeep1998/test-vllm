@@ -21,6 +21,8 @@ from vllm.assets.video import VideoAsset
 from vllm.lora.request import LoRARequest
 from vllm.utils import FlexibleArgumentParser
 
+from prompt import get_prompt
+
 # Suppressing the error
 import torch._dynamo
 torch._dynamo.config.suppress_errors = True
@@ -850,6 +852,9 @@ def get_multi_modal_input(args):
     if args.modality == "image":
         # Input image and question
         doc_image_path = "./pngs/xx_0_0.png"
+
+        prompt = get_prompt(doc_image_path)
+
         image = Image.open(doc_image_path)
         # if self.draw_grid:
         #     img = self.add_grid_overlay(img)
@@ -858,9 +863,10 @@ def get_multi_modal_input(args):
         #     .pil_image.convert("RGB")
         
         img_questions = [
+            prompt,
             # "What is the content of this image?",
             # "Describe the content of this image in detail.",
-            "What's in the image?",
+            # "What's in the image?",
             # "Where is this image taken?",
         ]
 
@@ -992,6 +998,10 @@ def main(args):
 
     else:
         outputs = llm.generate(inputs, sampling_params=sampling_params)
+    
+    print("=="*20)
+    print("GENERATED TEXT: ")
+    print("=="*20)
 
     for o in outputs:
         generated_text = o.outputs[0].text
