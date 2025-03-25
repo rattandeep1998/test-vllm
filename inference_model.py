@@ -22,6 +22,8 @@ from vllm.lora.request import LoRARequest
 from vllm.utils import FlexibleArgumentParser
 
 from prompt import get_prompt
+from vllm.sampling_params import GuidedDecodingParams
+from pydantic import BaseModel
 
 # Suppressing the error
 import torch._dynamo
@@ -177,6 +179,7 @@ def run_gemma3(questions: list[str], modality: str) -> ModelRequestData:
         max_num_seqs=2,
         mm_processor_kwargs={"do_pan_and_scan": True},
         disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
+        tensor_parallel_size=2,
     )
 
     prompts = [("<bos><start_of_turn>user\n"
@@ -919,6 +922,15 @@ def apply_image_repeat(image_repeat_prob, num_prompts, data,
 
     return inputs
 
+class BoundingBox(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+
+class FormFields(BaseModel):
+    fieldname: str
+    boundingbox: BoundingBox
 
 def main(args):
     model = args.model_type
@@ -958,8 +970,12 @@ def main(args):
         req_data.prompts[0]
     ]
 
+    # json_schema = FormFields.model_json_schema()
+    # guided_decoding_params = GuidedDecodingParams(json=json_schema)
+
     # We set temperature to 0.2 so that outputs can be different
     # even when all prompts are identical when running batch inference.
+
     sampling_params = SamplingParams(temperature=0.2,
                                      max_tokens=64,
                                      stop_token_ids=req_data.stop_token_ids)
@@ -973,6 +989,7 @@ def main(args):
                 modality: data
             },
         }
+        print("SINGLE PROMPT OUTPUT")
     else:
         # Batch inference
         if args.image_repeat_prob is not None:
@@ -988,6 +1005,14 @@ def main(args):
                     modality: data
                 },
             } for i in range(args.num_prompts)]
+    print("=="*20)
+    print("INPUTS:")
+    print(input)
+    print("=="*20)
+    print("=="*20)
+    print("SAMPLING PARAMS:")
+    print(sampling_params)
+    print("=="*20)
 
     if args.time_generate:
         import time
@@ -1015,7 +1040,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-type',
                         '-m',
                         type=str,
-                        default="llava",
+                        default="gemma3",
                         choices=model_example_map.keys(),
                         help='Huggingface "model_type".')
     parser.add_argument('--num-prompts',
