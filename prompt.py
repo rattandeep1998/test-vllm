@@ -21,15 +21,19 @@ def get_prompt(image_path):
     
     YOUR RESPONSE MUST CONTAIN NOTHING BUT VALID JSON - NO EXPLANATION, NO CODE BLOCKS, NO MARKDOWN.
     
-    Format your entire response as this exact JSON structure with fieldname and boundingbox keys and boundingbox value having x, y, height and width as float values. Each entry should look like this:
+    Format your entire response as this exact JSON structure:
     {{
-        "field_name": "exact label from form",
-        "bounding_box": {{
-            "x": float,
-            "y": float,
-            "width": float,
-            "height": float
-        }}
+        "form_fields": [
+            {{
+                "field_name": "exact label from form",
+                "bounding_box": {{
+                    "x": float,
+                    "y": float,
+                    "width": float,
+                    "height": float
+                }}
+            }}
+        ]
     }}
 
     Notes:

@@ -26,8 +26,8 @@ from vllm.sampling_params import GuidedDecodingParams
 from pydantic import BaseModel
 
 # Suppressing the error
-import torch._dynamo
-torch._dynamo.config.suppress_errors = True
+# import torch._dynamo
+# torch._dynamo.config.suppress_errors = True
 
 class ModelRequestData(NamedTuple):
     engine_args: EngineArgs
@@ -179,12 +179,17 @@ def run_gemma3(questions: list[str], modality: str) -> ModelRequestData:
         max_num_seqs=2,
         mm_processor_kwargs={"do_pan_and_scan": True},
         disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
-        tensor_parallel_size=2,
+        # tensor_parallel_size=2,
     )
 
     prompts = [("<bos><start_of_turn>user\n"
                 f"<start_of_image>{question}<end_of_turn>\n"
                 "<start_of_turn>model\n") for question in questions]
+
+    print("RATTAN: PROMPTS IN GEMMA")
+    print(prompts)
+    print("RATTAN: LENGTH")
+    print(len(prompts))
 
     return ModelRequestData(
         engine_args=engine_args,
@@ -858,7 +863,8 @@ def get_multi_modal_input(args):
 
         prompt = get_prompt(doc_image_path)
 
-        image = Image.open(doc_image_path)
+        image = Image.open(doc_image_path).convert("RGB")
+
         # if self.draw_grid:
         #     img = self.add_grid_overlay(img)
             
@@ -946,6 +952,7 @@ def main(args):
     req_data = model_example_map[model](questions, modality)
 
     engine_args = asdict(req_data.engine_args) | {"seed": args.seed}
+    engine_args['download_dir'] = '/local/data/rs4478/vllm_cache'
 
     print("=="*20)
     print("ENGINE ARGS")
@@ -970,8 +977,8 @@ def main(args):
         req_data.prompts[0]
     ]
 
-    # json_schema = FormFields.model_json_schema()
-    # guided_decoding_params = GuidedDecodingParams(json=json_schema)
+    json_schema = FormFields.model_json_schema()
+    guided_decoding_params = GuidedDecodingParams(json=json_schema)
 
     # We set temperature to 0.2 so that outputs can be different
     # even when all prompts are identical when running batch inference.
@@ -1040,7 +1047,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-type',
                         '-m',
                         type=str,
-                        default="gemma3",
+                        default="qwen2_vl",
                         choices=model_example_map.keys(),
                         help='Huggingface "model_type".')
     parser.add_argument('--num-prompts',
