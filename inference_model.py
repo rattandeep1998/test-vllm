@@ -849,195 +849,104 @@ model_example_map = {
     "qwen2_5_vl": run_qwen2_5_vl,
 }
 
-
-def get_multi_modal_input(args):
+def generate_responses(images, args):
     """
-    return {
-        "data": image or video,
-        "question": question,
-    }
+    Given a list of images and an args object, this function:
+      1) Builds prompts from each image.
+      2) Prepares engine/model arguments.
+      3) Calls llm.generate in one batch.
+      4) Returns the list of outputs.
     """
-    if args.modality == "image":
-        # Input image and question
-        doc_image_path = "./pngs/xx_0_0.png"
 
-        prompt = get_prompt(doc_image_path)
-
-        image = Image.open(doc_image_path).convert("RGB")
-
-        # if self.draw_grid:
-        #     img = self.add_grid_overlay(img)
-            
-        # image = ImageAsset("cherry_blossom") \
-        #     .pil_image.convert("RGB")
-        
-        img_questions = [
-            prompt,
-            # "What is the content of this image?",
-            # "Describe the content of this image in detail.",
-            # "What's in the image?",
-            # "Where is this image taken?",
-        ]
-
-        return {
-            "data": image,
-            "questions": img_questions,
-        }
-
-    if args.modality == "video":
-        # Input video and question
-        video = VideoAsset(name="sample_demo_1.mp4",
-                           num_frames=args.num_frames).np_ndarrays
-        vid_questions = ["Why is this video funny?"]
-
-        return {
-            "data": video,
-            "questions": vid_questions,
-        }
-
-    msg = f"Modality {args.modality} is not supported."
-    raise ValueError(msg)
-
-
-def apply_image_repeat(image_repeat_prob, num_prompts, data,
-                       prompts: list[str], modality):
-    """Repeats images with provided probability of "image_repeat_prob". 
-    Used to simulate hit/miss for the MM preprocessor cache.
-    """
-    assert (image_repeat_prob <= 1.0 and image_repeat_prob >= 0)
-    no_yes = [0, 1]
-    probs = [1.0 - image_repeat_prob, image_repeat_prob]
-
-    inputs = []
-    cur_image = data
-    for i in range(num_prompts):
-        if image_repeat_prob is not None:
-            res = random.choices(no_yes, probs)[0]
-            if res == 0:
-                # No repeat => Modify one pixel
-                cur_image = cur_image.copy()
-                new_val = (i // 256 // 256, i // 256, i % 256)
-                cur_image.putpixel((0, 0), new_val)
-
-        inputs.append({
-            "prompt": prompts[i % len(prompts)],
-            "multi_modal_data": {
-                modality: cur_image
-            }
-        })
-
-    return inputs
-
-class BoundingBox(BaseModel):
-    x: float
-    y: float
-    width: float
-    height: float
-
-class FormFields(BaseModel):
-    fieldname: str
-    boundingbox: BoundingBox
-
-def main(args):
+    modality = "image"
     model = args.model_type
     if model not in model_example_map:
         raise ValueError(f"Model type {model} is not supported.")
 
-    modality = args.modality
-    mm_input = get_multi_modal_input(args)
+    prompts_for_all_images = []
+    for img in images:
+        prompt = get_prompt(img)
+        prompts_for_all_images.append(prompt)
 
-    data = mm_input["data"]
-    questions = mm_input["questions"]
-
-    req_data = model_example_map[model](questions, modality)
+    req_data = model_example_map[model](prompts_for_all_images, modality)
 
     engine_args = asdict(req_data.engine_args) | {"seed": args.seed}
-    engine_args['download_dir'] = '/local/data/rs4478/vllm_cache'
+    engine_args["download_dir"] = "/local/data/rs4478/vllm_cache"
 
-    print("=="*20)
+    print("==" * 20)
     print("ENGINE ARGS")
     print(engine_args)
-    print("=="*20)
+    print("==" * 20)
 
     llm = LLM(**engine_args)
 
-    print("=="*20)
+    print("==" * 20)
     print("LLM INITIALISED")
-    print("=="*20)
+    print("==" * 20)
 
-    # To maintain code compatibility in this script, we add LoRA here.
-    # You can also add LoRA using:
-    # llm.generate(prompts, lora_request=lora_request,...)
-    # if req_data.lora_requests:
-    #     for lora_request in req_data.lora_requests:
-    #         llm.llm_engine.add_lora(lora_request=lora_request)
+    all_inputs = []
+    for i, img in enumerate(images):
+        all_inputs.append(
+            {
+                "prompt": req_data.prompts[i],  # The i-th prompt from req_data
+                "multi_modal_data": {modality: img},
+            }
+        )
 
-    # Don't want to check the flag multiple times, so just hijack `prompts`.
-    prompts = req_data.prompts if args.use_different_prompt_per_request else [
-        req_data.prompts[0]
-    ]
+    sampling_params = SamplingParams(
+        temperature=0.2,
+        max_tokens=64,
+        stop_token_ids=req_data.stop_token_ids
+    )
 
-    json_schema = FormFields.model_json_schema()
-    guided_decoding_params = GuidedDecodingParams(json=json_schema)
-
-    # We set temperature to 0.2 so that outputs can be different
-    # even when all prompts are identical when running batch inference.
-
-    sampling_params = SamplingParams(temperature=0.2,
-                                     max_tokens=64,
-                                     stop_token_ids=req_data.stop_token_ids)
-
-    assert args.num_prompts > 0
-    if args.num_prompts == 1:
-        # Single inference
-        inputs = {
-            "prompt": prompts[0],
-            "multi_modal_data": {
-                modality: data
-            },
-        }
-        print("SINGLE PROMPT OUTPUT")
-    else:
-        # Batch inference
-        if args.image_repeat_prob is not None:
-            # Repeat images with specified probability of "image_repeat_prob"
-            inputs = apply_image_repeat(args.image_repeat_prob,
-                                        args.num_prompts, data, prompts,
-                                        modality)
-        else:
-            # Use the same image for all prompts
-            inputs = [{
-                "prompt": prompts[i % len(prompts)],
-                "multi_modal_data": {
-                    modality: data
-                },
-            } for i in range(args.num_prompts)]
-    print("=="*20)
-    print("INPUTS:")
-    print(input)
-    print("=="*20)
-    print("=="*20)
+    print("==" * 20)
     print("SAMPLING PARAMS:")
     print(sampling_params)
-    print("=="*20)
+    print("==" * 20)
 
     if args.time_generate:
         import time
         start_time = time.time()
-        outputs = llm.generate(inputs, sampling_params=sampling_params)
+        outputs = llm.generate(all_inputs, sampling_params=sampling_params)
         elapsed_time = time.time() - start_time
-        print("-- generate time = {}".format(elapsed_time))
-
+        print(f"-- generate time = {elapsed_time}")
     else:
-        outputs = llm.generate(inputs, sampling_params=sampling_params)
-    
-    print("=="*20)
-    print("GENERATED TEXT: ")
-    print("=="*20)
+        outputs = llm.generate(all_inputs, sampling_params=sampling_params)
 
-    for o in outputs:
-        generated_text = o.outputs[0].text
+    return outputs
+
+
+def main(args):
+    """
+    Main entry point:
+      1) Reads all PNG files in ./pngs.
+      2) Opens them as a list of PIL images.
+      3) Calls generate_responses(images, args).
+      4) Prints the generated outputs, one per image.
+    """
+    png_folder = "./pngs"
+    png_files = [f for f in os.listdir(png_folder) if f.endswith(".png")]
+
+    # Convert all .png files into PIL images
+    images = []
+    for f in png_files:
+        path = os.path.join(png_folder, f)
+        img = Image.open(path).convert("RGB")
+        images.append(img)
+
+    # Call our function to get the list of outputs
+    outputs = generate_responses(images, args)
+
+    print("==" * 20)
+    print("GENERATED TEXT:")
+    print("==" * 20)
+
+    # Each output corresponds to the same index in png_files
+    for i, out in enumerate(outputs):
+        generated_text = out.outputs[0].text
+        print(f"===== Output for {png_files[i]} =====")
         print(generated_text)
+        print()
 
 
 if __name__ == "__main__":
@@ -1047,7 +956,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-type',
                         '-m',
                         type=str,
-                        default="qwen2_vl",
+                        default="qwen_vl",
                         choices=model_example_map.keys(),
                         help='Huggingface "model_type".')
     parser.add_argument('--num-prompts',

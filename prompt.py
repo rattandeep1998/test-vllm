@@ -13,8 +13,8 @@ def get_image_dimensions(image_path):
     with Image.open(image_path) as img:
         return img.size
     
-def get_prompt(image_path):
-    img_width, img_height = get_image_dimensions(image_path)
+def get_prompt(img):
+    img_width, img_height = img.size
 
     prompt = f"""
     Analyze this form image and extract all form fields.
