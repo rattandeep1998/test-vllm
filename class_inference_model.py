@@ -231,7 +231,7 @@ class HFE2EModel:
     
 def main():
     # 1) List all the models you want to run
-    models = ["deepseek_vl2", "gemma3"]
+    models = ["gemma3"]
     
     # 2) Folder containing your PNG images
     png_folder = "./pngs"
@@ -298,7 +298,7 @@ def main():
             print()
 
         # 9) Cleanup model resources before loading the next model
-        model.cleanup()
+        # model.cleanup()
 
 if __name__ == "__main__":
     main()

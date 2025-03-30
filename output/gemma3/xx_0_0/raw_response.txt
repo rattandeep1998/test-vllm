@@ -1,0 +1,9 @@
+```json
+{
+    "form_fields": [
+        {
+            "field_name": "Bank Name",
+            "bounding_box": {
+                "x": 0.0,
+                "y": 0.0,
+                "width": 1.0,
