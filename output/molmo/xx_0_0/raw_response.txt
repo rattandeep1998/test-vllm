@@ -1,0 +1,10 @@
+ {
+    "form_fields": [
+        {
+            "field_name": "Bank Name",
+            "bounding_box": {
+                "x": 22.1,
+                "y": 0.0,
+                "width": 37.0,
+                "height": 1.2
+            }

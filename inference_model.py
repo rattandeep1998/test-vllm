@@ -24,10 +24,7 @@ from vllm.utils import FlexibleArgumentParser
 from prompt import get_prompt
 from vllm.sampling_params import GuidedDecodingParams
 from pydantic import BaseModel
-
-# Suppressing the error
-# import torch._dynamo
-# torch._dynamo.config.suppress_errors = True
+import time
 
 class ModelRequestData(NamedTuple):
     engine_args: EngineArgs
@@ -51,8 +48,7 @@ def run_aria(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         max_model_len=4096,
         max_num_seqs=2,
-        dtype="bfloat16",
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
+        dtype="bfloat16",   
     )
 
     prompts = [(f"<|im_start|>user\n<fim_prefix><|img|><fim_suffix>{question}"
@@ -77,7 +73,6 @@ def run_blip2(questions: list[str], modality: str) -> ModelRequestData:
     prompts = [f"Question: {question} Answer:" for question in questions]
     engine_args = EngineArgs(
         model="Salesforce/blip2-opt-2.7b",
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -95,7 +90,6 @@ def run_chameleon(questions: list[str], modality: str) -> ModelRequestData:
         model="facebook/chameleon-7b",
         max_model_len=4096,
         max_num_seqs=2,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -114,7 +108,6 @@ def run_deepseek_vl2(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         max_model_len=4096,
         max_num_seqs=2,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
         hf_overrides={"architectures": ["DeepseekVLV2ForCausalLM"]},
     )
 
@@ -139,7 +132,6 @@ def run_florence2(questions: list[str], modality: str) -> ModelRequestData:
         max_num_seqs=8,
         trust_remote_code=True,
         dtype="bfloat16",
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     prompts = ["<MORE_DETAILED_CAPTION>" for _ in questions]
@@ -159,7 +151,6 @@ def run_fuyu(questions: list[str], modality: str) -> ModelRequestData:
         model="adept/fuyu-8b",
         max_model_len=2048,
         max_num_seqs=2,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -178,7 +169,6 @@ def run_gemma3(questions: list[str], modality: str) -> ModelRequestData:
         max_model_len=2048,
         max_num_seqs=2,
         mm_processor_kwargs={"do_pan_and_scan": True},
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
         # tensor_parallel_size=2,
     )
 
@@ -209,7 +199,6 @@ def run_glm4v(questions: list[str], modality: str) -> ModelRequestData:
         trust_remote_code=True,
         enforce_eager=True,
         hf_overrides={"architectures": ["GLM4VForCausalLM"]},
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     prompts = [
@@ -236,7 +225,6 @@ def run_h2ovl(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         trust_remote_code=True,
         max_model_len=8192,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name,
@@ -277,7 +265,6 @@ def run_idefics3(questions: list[str], modality: str) -> ModelRequestData:
                 "longest_edge": 3 * 364
             },
         },
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
     prompts = [(
         f"<|begin_of_text|>User:<image>{question}<end_of_utterance>\nAssistant:"
@@ -299,7 +286,6 @@ def run_internvl(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         trust_remote_code=True,
         max_model_len=4096,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name,
@@ -337,7 +323,6 @@ def run_llava(questions: list[str], modality: str) -> ModelRequestData:
     engine_args = EngineArgs(
         model="llava-hf/llava-1.5-7b-hf",
         max_model_len=4096,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -354,7 +339,6 @@ def run_llava_next(questions: list[str], modality: str) -> ModelRequestData:
     engine_args = EngineArgs(
         model="llava-hf/llava-v1.6-mistral-7b-hf",
         max_model_len=8192,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -375,7 +359,6 @@ def run_llava_next_video(questions: list[str],
     engine_args = EngineArgs(
         model="llava-hf/LLaVA-NeXT-Video-7B-hf",
         max_model_len=8192,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -403,7 +386,6 @@ def run_llava_onevision(questions: list[str],
     engine_args = EngineArgs(
         model="llava-hf/llava-onevision-qwen2-7b-ov-hf",
         max_model_len=16384,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -426,7 +408,6 @@ def run_mantis(questions: list[str], modality: str) -> ModelRequestData:
         model="TIGER-Lab/Mantis-8B-siglip-llama3",
         max_model_len=4096,
         hf_overrides={"architectures": ["MantisForConditionalGeneration"]},
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
     stop_token_ids = [128009]
 
@@ -467,7 +448,6 @@ def run_minicpmv_base(questions: list[str], modality: str, model_name):
         max_model_len=4096,
         max_num_seqs=2,
         trust_remote_code=True,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
     # NOTE The stop_token_ids are different for various versions of MiniCPM-V
     # 2.0
@@ -525,7 +505,6 @@ def run_mllama(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         max_model_len=4096,
         max_num_seqs=16,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -559,7 +538,6 @@ def run_molmo(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         trust_remote_code=True,
         dtype="bfloat16",
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     prompts = [
@@ -585,7 +563,6 @@ def run_nvlm_d(questions: list[str], modality: str) -> ModelRequestData:
         trust_remote_code=True,
         max_model_len=4096,
         tensor_parallel_size=4,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_name,
@@ -664,7 +641,6 @@ def run_phi3v(questions: list[str], modality: str) -> ModelRequestData:
         max_num_seqs=2,
         # Note - mm_processor_kwargs can also be passed to generate/chat calls
         mm_processor_kwargs={"num_crops": 16},
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     return ModelRequestData(
@@ -715,7 +691,6 @@ def run_pixtral_hf(questions: list[str], modality: str) -> ModelRequestData:
         model=model_name,
         max_model_len=8192,
         max_num_seqs=2,
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     prompts = [f"<s>[INST]{question}\n[IMG][/INST]" for question in questions]
@@ -736,7 +711,6 @@ def run_qwen_vl(questions: list[str], modality: str) -> ModelRequestData:
         max_model_len=1024,
         max_num_seqs=2,
         hf_overrides={"architectures": ["QwenVLForConditionalGeneration"]},
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     prompts = [f"{question}Picture 1: <img></img>\n" for question in questions]
@@ -761,7 +735,6 @@ def run_qwen2_vl(questions: list[str], modality: str) -> ModelRequestData:
             "min_pixels": 28 * 28,
             "max_pixels": 1280 * 28 * 28,
         },
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     if modality == "image":
@@ -796,7 +769,6 @@ def run_qwen2_5_vl(questions: list[str], modality: str) -> ModelRequestData:
             "max_pixels": 1280 * 28 * 28,
             "fps": 1,
         },
-        disable_mm_preprocessor_cache=args.disable_mm_preprocessor_cache,
     )
 
     if modality == "image":
@@ -849,17 +821,8 @@ model_example_map = {
     "qwen2_5_vl": run_qwen2_5_vl,
 }
 
-def generate_responses(images, args):
-    """
-    Given a list of images and an args object, this function:
-      1) Builds prompts from each image.
-      2) Prepares engine/model arguments.
-      3) Calls llm.generate in one batch.
-      4) Returns the list of outputs.
-    """
-
+def generate_responses(images, model):
     modality = "image"
-    model = args.model_type
     if model not in model_example_map:
         raise ValueError(f"Model type {model} is not supported.")
 
@@ -870,7 +833,7 @@ def generate_responses(images, args):
 
     req_data = model_example_map[model](prompts_for_all_images, modality)
 
-    engine_args = asdict(req_data.engine_args) | {"seed": args.seed}
+    engine_args = asdict(req_data.engine_args) | {"seed": None}
     engine_args["download_dir"] = "/local/data/rs4478/vllm_cache"
 
     print("==" * 20)
@@ -904,19 +867,15 @@ def generate_responses(images, args):
     print(sampling_params)
     print("==" * 20)
 
-    if args.time_generate:
-        import time
-        start_time = time.time()
-        outputs = llm.generate(all_inputs, sampling_params=sampling_params)
-        elapsed_time = time.time() - start_time
-        print(f"-- generate time = {elapsed_time}")
-    else:
-        outputs = llm.generate(all_inputs, sampling_params=sampling_params)
-
+    start_time = time.time()
+    outputs = llm.generate(all_inputs, sampling_params=sampling_params)
+    elapsed_time = time.time() - start_time
+    print(f"-- generate time = {elapsed_time}")
+    
     return outputs
 
 
-def main(args):
+def main():
     """
     Main entry point:
       1) Reads all PNG files in ./pngs.
@@ -924,6 +883,7 @@ def main(args):
       3) Calls generate_responses(images, args).
       4) Prints the generated outputs, one per image.
     """
+    model = "gemma3"
     png_folder = "./pngs"
     png_files = [f for f in os.listdir(png_folder) if f.endswith(".png")]
 
@@ -935,7 +895,7 @@ def main(args):
         images.append(img)
 
     # Call our function to get the list of outputs
-    outputs = generate_responses(images, args)
+    outputs = generate_responses(images, model)
 
     print("==" * 20)
     print("GENERATED TEXT:")
@@ -948,57 +908,5 @@ def main(args):
         print(generated_text)
         print()
 
-
 if __name__ == "__main__":
-    parser = FlexibleArgumentParser(
-        description='Demo on using vLLM for offline inference with '
-        'vision language models for text generation')
-    parser.add_argument('--model-type',
-                        '-m',
-                        type=str,
-                        default="gemma3",
-                        choices=model_example_map.keys(),
-                        help='Huggingface "model_type".')
-    parser.add_argument('--num-prompts',
-                        type=int,
-                        default=1,
-                        help='Number of prompts to run.')
-    parser.add_argument('--modality',
-                        type=str,
-                        default="image",
-                        choices=['image', 'video'],
-                        help='Modality of the input.')
-    parser.add_argument('--num-frames',
-                        type=int,
-                        default=16,
-                        help='Number of frames to extract from the video.')
-    parser.add_argument("--seed",
-                        type=int,
-                        default=None,
-                        help="Set the seed when initializing `vllm.LLM`.")
-
-    parser.add_argument(
-        '--image-repeat-prob',
-        type=float,
-        default=None,
-        help='Simulates the hit-ratio for multi-modal preprocessor cache'
-        ' (if enabled)')
-
-    parser.add_argument(
-        '--disable-mm-preprocessor-cache',
-        action='store_true',
-        help='If True, disables caching of multi-modal preprocessor/mapper.')
-
-    parser.add_argument(
-        '--time-generate',
-        action='store_true',
-        help='If True, then print the total generate() call time')
-
-    parser.add_argument(
-        '--use-different-prompt-per-request',
-        action='store_true',
-        help='If True, then use different prompt (with the same multi-modal '
-        'data) for each request.')
-
-    args = parser.parse_args()
-    main(args)
+    main()

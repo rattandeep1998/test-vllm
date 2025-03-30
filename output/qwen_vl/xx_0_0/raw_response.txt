@@ -1,0 +1,9 @@
+Analyze this form image and extract all form fields.
+
+YOUR RESPONSE MUST CONTAIN NOTHING BUT VALID JSON - NO EXPLANATION, NO CODE BLOCKS, NO MARKDOWN.
+
+Format your entire response as this exact JSON structure:
+{
+    "form_fields": [
+        {
+            "field_name": "exact label from form
