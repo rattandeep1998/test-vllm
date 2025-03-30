@@ -956,7 +956,7 @@ if __name__ == "__main__":
     parser.add_argument('--model-type',
                         '-m',
                         type=str,
-                        default="qwen_vl",
+                        default="gemma3",
                         choices=model_example_map.keys(),
                         help='Huggingface "model_type".')
     parser.add_argument('--num-prompts',

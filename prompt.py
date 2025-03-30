@@ -2,6 +2,7 @@ from PIL import Image
 import json
 import base64
 import re
+import textwrap
 
 def encode_image(image_path):
     """Encode image to base64 string."""
@@ -43,6 +44,8 @@ def get_prompt(img):
     - Include ALL form fields requiring user input
     - Copy field names exactly as they appear
     """
+
+    prompt = textwrap.dedent(prompt).strip()
 
     return prompt
 
