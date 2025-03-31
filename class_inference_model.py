@@ -166,7 +166,7 @@ class MLLamaModel(BaseHFModel):
     def __init__(self):
         super().__init__()
         self.engine_args = EngineArgs(
-            model="meta-llama/Llama-3.2-11B-Vision-Instruct",
+            model="meta-llama/Llama-3.2-90B-Vision-Instruct",
             max_model_len=4096,
             max_num_seqs=16,
         )
@@ -225,7 +225,7 @@ class HFE2EModel:
         engine_args_dict["download_dir"] = download_dir
         engine_args_dict["seed"] = seed
         # Argument for multiple GPUs
-        # engine_args_dict["tensor_parallel_size"] = 2
+        # engine_args_dict["tensor_parallel_size"] = 4
 
         self.llm = LLM(**engine_args_dict)
 
