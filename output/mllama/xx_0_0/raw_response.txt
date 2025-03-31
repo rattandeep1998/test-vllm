@@ -1,0 +1,10 @@
+The image shows a blank form with the following fields:
+
+* Bank Name
+* Bank Account Number
+* Marriage
+	+ Single
+	+ Married
+* Initial
+
+The form fields are located on the left side of the image, with the corresponding labels and input areas. The "Bank Name" and "Bank Account

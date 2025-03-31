@@ -18,7 +18,9 @@ import json
 from vllm.sampling_params import GuidedDecodingParams
 from pydantic import BaseModel
 import time
-from vllm.distributed.parallel_state import destroy_model_parallel
+from vllm.distributed.parallel_state import destroy_model_parallel, destroy_distributed_environment
+from torch.distributed import destroy_process_group
+
 import gc
 import torch
 
@@ -160,6 +162,46 @@ class Gemma3Model(BaseHFModel):
 
         return prompts
 
+class MLLamaModel(BaseHFModel):
+    def __init__(self):
+        super().__init__()
+        self.engine_args = EngineArgs(
+            model="meta-llama/Llama-3.2-11B-Vision-Instruct",
+            max_model_len=4096,
+            max_num_seqs=16,
+        )
+        self.stop_token_ids = None
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.engine_args.model,
+            trust_remote_code=self.engine_args.trust_remote_code
+        )
+
+    def get_prompt(self, images: List[Image.Image]) -> List[str]:
+        questions = []
+        for image in images:
+            question = get_prompt(image)
+            questions.append(question)
+
+        messages = [
+            [{
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "text", "text": question}
+                ]
+            }]
+            for question in questions
+        ]
+
+        prompts = self.tokenizer.apply_chat_template(
+            messages,
+            add_generation_prompt=True,
+            tokenize=False
+        )
+
+        return prompts
+    
 # HF E2E Class
 class HFE2EModel:
     def __init__(self, model_name: str, download_dir: str = "/local/data/rs4478/vllm_cache", seed=None):
@@ -170,6 +212,7 @@ class HFE2EModel:
             "qwen_vl": QwenVLModel,
             "deepseek_vl2": DeepseekVL2Model,
             "gemma3": Gemma3Model,
+            "mllama": MLLamaModel,
             # add more models here (MyFancyModel, etc.)
         }
 
@@ -181,6 +224,8 @@ class HFE2EModel:
         engine_args_dict = asdict(self.model.engine_args)
         engine_args_dict["download_dir"] = download_dir
         engine_args_dict["seed"] = seed
+        # Argument for multiple GPUs
+        # engine_args_dict["tensor_parallel_size"] = 2
 
         self.llm = LLM(**engine_args_dict)
 
@@ -211,8 +256,10 @@ class HFE2EModel:
         return outputs
     
     def cleanup(self):
-        # destroy_model_parallel()
-
+        destroy_model_parallel()
+        destroy_distributed_environment()
+        destroy_process_group()
+        
         if hasattr(self, 'llm') and hasattr(self.llm, 'llm_engine'):
             if hasattr(self.llm.llm_engine, 'driver_worker'):
                 del self.llm.llm_engine.driver_worker
@@ -231,7 +278,7 @@ class HFE2EModel:
     
 def main():
     # 1) List all the models you want to run
-    models = ["gemma3"]
+    models = ["mllama"]
     
     # 2) Folder containing your PNG images
     png_folder = "./pngs"
