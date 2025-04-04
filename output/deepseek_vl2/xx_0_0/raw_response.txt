@@ -1,9 +1,13 @@
 {
-    "Bank Name": "Bank Name",
-    "Bank Account Number": "Bank Account Number",
-    "Marriage": {
-        "[ ] Single": "Single",
-        "[ ] Married": "Married"
-    },
-    "Initial": "Initial"
-}
+    "form_fields": [
+        {
+            "field_name": "Bank Name",
+            "bounding_box": {
+                "x": float,
+                "y": float,
+                "width": float,
+                "height": float
+            }
+        },
+        {
+            "field_name": "Bank Account Number

@@ -278,7 +278,7 @@ class HFE2EModel:
     
 def main():
     # 1) List all the models you want to run
-    models = ["mllama"]
+    models = ["deepseek_vl2"]
     
     # 2) Folder containing your PNG images
     png_folder = "./pngs"
